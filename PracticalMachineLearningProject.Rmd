@@ -1,0 +1,80 @@
+---
+title: "Practical Machine Learinig Project"
+author: "Yuval Shachaf"
+date: "Tuesday, December 16, 2014"
+output: html_document
+---
+# The libraries required to run the project
+```
+library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(rpart)
+setwd("C:\\Users\\Yoval\\Documents")
+```
+This project investigates the misclassification accuracy for the Rpart and RandomForests algorithms. First part includes Rpart which will be followed and compared to the RandonForest algorithm. Subsequently, it will be shown that the latter outperformes the former.
+
+# Part 1 - Using Rpart
+## Importing data
+
+```{r}
+training = read.csv("pml-training.csv")
+```
+## Cleaning and partitioning the data
+the dataset coulumns containing NA and blank cells are excluded and 80% of the dataset is utilized for modeling.
+```{r}
+newtraining <- training[c(-1:-7,-12:-36,-50:-59,-69:-83,-87:-101,-103:-112,-125:-139,-141:-150)]
+inTrain <- createDataPartition(y=newtraining$classe, p=0.8, list=FALSE)
+newtrain <- newtraining[inTrain, ]
+newtest <- newtrain[-inTrain, ]
+```
+## Fitting the model
+Rpart algorithm from the Caret package is used based on the *Class* as an outcome
+```{r}
+modFitRpart<-train(classe ~.,data=newtrain,method="rpart")
+```
+## Testing the model
+The model fit and Confusion Matrix data exhibit an avg accuracy of approx 50%, meaning we cannot use this model for prediction.
+
+```{r}
+predRpart <- predict(modFitRpart, newtest)
+confusionMatrix(predRpart, newtest$classe)
+```
+
+# Part 2 - Using Random Forests
+## Importing and cleaning train data
+Here we do the same as before. In addition we import the test set, as we will use it to predict the outcome as required.
+We dont need to split the data into train and test since the RandomForest algorithm takes care of the validation internally.
+```{r}
+test = read.csv("pml-testing.csv")
+newtrain <- training[c(-1:-7,-12:-36,-50:-59,-69:-83,-87:-101,-103:-112,-125:-139,-141:-150)]
+```
+
+Prior cleaning the test data, near-zero values has been checked. Since the function returns integer(0), no coloumns have been removed apart from those empty or containing NA
+```{r}
+newtrainNZV <- nearZeroVar(newtrain, saveMetrics=FALSE)
+newtrainNZV
+```
+
+```{r}
+newtest <- test[c(-1:-7,-12:-36,-50:-59,-69:-83,-87:-101,-103:-112,-125:-139,-141:-150,-160)]
+```
+# Dataset resampling
+The entire data set have been used for fitting to provide accuracy of approx 0.3%, with fewer entires such as 4000 the accuracy drops to approx. 2.75%.
+```{r}
+mysample <- newtrain[sample(1:nrow(newtrain),19622 ,replace=FALSE),]
+```
+## Fitting the model
+ntree of 200 was chosen as a trade-off between speed and accuracy
+```{r}
+modFitRF <- randomForest(classe ~.,data=mysample, ntree=200)
+modFitRF
+```
+## Testing the model
+Results has been verified yielding 100% prediction success 
+```{r}
+newtest$predClass<-predict(modFitRF,newtest)
+answers <- newtest$predClass
+answers
+```
